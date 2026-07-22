@@ -1,0 +1,13 @@
+[
+  {
+    "test_name": "latency_qwen3_8B_tp1",
+    "parameters": {
+      "model": "/home/trainee/models/Qwen3-8B",
+      "tensor_parallel_size": 1,
+      "load_format": "dummy",
+      "max_model_len": 16384,
+      "num_iters_warmup": 5,
+      "num_iters": 15
+    }
+  }
+]

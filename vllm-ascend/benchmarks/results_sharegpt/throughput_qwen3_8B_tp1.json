@@ -1,0 +1,8 @@
+{
+  "elapsed_time": 26.282554061996052,
+  "num_requests": 200,
+  "total_num_tokens": 88257,
+  "requests_per_second": 7.609610524465552,
+  "tokens_per_second": 3358.006980288781,
+  "model_name": "/home/trainee/models/Qwen3-8B"
+}

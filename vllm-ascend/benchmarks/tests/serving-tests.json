@@ -1,0 +1,30 @@
+[
+  {
+    "test_name": "serving_qwen3_8B_tp1",
+    "qps_list": [
+      1,
+      4,
+      16,
+      "inf"
+    ],
+    "server_parameters": {
+      "model": "/home/trainee/models/Qwen3-8B",
+      "tensor_parallel_size": 1,
+      
+      "disable_log_stats": "",
+      
+      "trust_remote_code": "",
+      "max_model_len": 16384
+    },
+    "client_parameters": {
+      "model": "/home/trainee/models/Qwen3-8B",
+      "backend": "openai-chat",
+      "dataset_name": "sharegpt",
+      "dataset_path": "/github/home/.cache/datasets/ShareGPT_V3_unfiltered_cleaned_split.json",
+      "hf_split": "train",
+      "endpoint": "/v1/chat/completions",
+      "num_prompts": 200,
+      "no_stream": ""
+    }
+  }
+]
