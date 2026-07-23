@@ -165,6 +165,8 @@ class CudagraphDispatcher:
     def initialize_cudagraph_keys(
         self, cudagraph_mode: CUDAGraphMode, uniform_decode_query_len: int = 1
     ):
+        ##改 增
+        self.uniform_decode_query_len = uniform_decode_query_len
         # This should be called only after attention backend is initialized. So we can
         # get the correct cudagraph mode after backend support is resolved.
         self.cudagraph_mode = cudagraph_mode

@@ -430,7 +430,9 @@ class NPUModelRunner(GPUModelRunner):
         set_cos_and_sin(vllm_config, self.max_num_reqs, self.uniform_decode_query_len, self.dtype, self.device)
         set_mc2_tokens_capacity(vllm_config, self.max_num_reqs, self.uniform_decode_query_len)
         set_mc2_mask(vllm_config, self.device)
-        self.decode_threshold = 1 + (self.speculative_config.num_speculative_tokens if self.speculative_config else 0)
+        ##改 换
+        # self.decode_threshold = 1 + (self.speculative_config.num_speculative_tokens if self.speculative_config else 0)
+        self.decode_threshold = 1 + (7 if self.speculative_config else 0)  ##?
 
         self.use_aclgraph = self._use_aclgraph()
 
@@ -546,7 +548,9 @@ class NPUModelRunner(GPUModelRunner):
         if self.speculative_config:
             spec_token_num = self.speculative_config.num_speculative_tokens
             assert spec_token_num > 0
-            self.decode_token_per_req = 1 + spec_token_num
+            ##改 换
+            #self.decode_token_per_req = 1 + spec_token_num
+            self.decode_token_per_req = 1 + 7
             if get_pp_group().is_last_rank:
                 self.drafter = self._get_drafter()
                 if self.speculative_config.method == "eagle3":
