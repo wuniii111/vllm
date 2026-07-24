@@ -431,8 +431,14 @@ class NPUModelRunner(GPUModelRunner):
         set_mc2_tokens_capacity(vllm_config, self.max_num_reqs, self.uniform_decode_query_len)
         set_mc2_mask(vllm_config, self.device)
         ##改 换
+        # decode_threshold表示能够被归类为decode阶段的最大query length
         # self.decode_threshold = 1 + (self.speculative_config.num_speculative_tokens if self.speculative_config else 0)
-        self.decode_threshold = 1 + (7 if self.speculative_config else 0)  ##?
+        # self.decode_threshold = 1 + (7 if self.speculative_config else 0)  ##?
+        self.decode_threshold = (
+            1 + self.num_spec_tokens
+            if self.speculative_config
+            else 1
+        )
 
         self.use_aclgraph = self._use_aclgraph()
 
@@ -549,8 +555,8 @@ class NPUModelRunner(GPUModelRunner):
             spec_token_num = self.speculative_config.num_speculative_tokens
             assert spec_token_num > 0
             ##改 换
-            #self.decode_token_per_req = 1 + spec_token_num
-            self.decode_token_per_req = 1 + 7
+            self.decode_token_per_req = 1 + spec_token_num
+            # self.decode_token_per_req = 1 + 7
             if get_pp_group().is_last_rank:
                 self.drafter = self._get_drafter()
                 if self.speculative_config.method == "eagle3":
@@ -1769,6 +1775,64 @@ class NPUModelRunner(GPUModelRunner):
 
         # 当前批次总调度token数量
         num_scheduled_tokens = scheduler_output.total_num_scheduled_tokens
+
+        ##改 增
+        if self.speculative_config is not None:
+            # SchedulerOutput携带的是当前批次冻结后的K_active。
+            # 该值只决定本批次Target实际验证长度，
+            # 不改变初始化时按照K_max创建的缓冲区容量。
+            active_k = scheduler_output.active_num_spec_tokens
+
+            if scheduler_output.total_num_scheduled_tokens == 0:
+                # DP同步产生的空批次没有实际请求，也没有实际验证长度。
+                # 使用最大K作为安全默认值，避免空批次触发非法范围检查。
+                active_k = self.num_spec_tokens
+
+            elif not 1 <= active_k <= self.num_spec_tokens:
+                raise RuntimeError(
+                    "Invalid active_num_spec_tokens: "
+                    f"active_k={active_k}, "
+                    f"max_k={self.num_spec_tokens}"
+                )
+
+            # 验证Scheduler实际下发的draft数量没有超过声明的active_k。
+            # 不要求每个请求都恰好等于active_k，因为请求可能受到：
+            #   最大序列长度、剩余token预算、停止条件等限制。
+            actual_max_draft_tokens = max(
+                (
+                    len(token_ids)
+                    for token_ids in (
+                        scheduler_output
+                        .scheduled_spec_decode_tokens
+                        .values()
+                    )
+                ),
+                default=0,
+            )
+
+            if actual_max_draft_tokens > active_k:
+                raise RuntimeError(
+                    "Scheduled draft tokens exceed active K: "
+                    f"actual={actual_max_draft_tokens}, "
+                    f"active_k={active_k}"
+                )
+
+            self.active_num_spec_tokens = active_k
+
+            # Target前向除了K_active个draft token，还包含1个已知输入token。
+            self.runtime_decode_query_len = 1 + active_k
+
+            # Ascend注意力元数据构造应使用当前批次的实际query length。
+            self.decode_token_per_req = (
+                self.runtime_decode_query_len
+            )
+
+        else:
+            # 未启用推测解码时，每个decode请求只处理1个token。
+            self.active_num_spec_tokens = 0
+            self.runtime_decode_query_len = 1
+            self.decode_token_per_req = 1
+        ##
 
         # 输入准备阶段性能埋点
         with record_function_or_nullcontext("prepare input"):

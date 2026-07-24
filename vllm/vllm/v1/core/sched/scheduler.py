@@ -64,6 +64,105 @@ from vllm.v1.utils import record_function_or_nullcontext
 logger = init_logger(__name__)
 
 
+##改 增
+class AcceptanceRateSpecTokenController:
+    """初始化动态控制器。
+
+    Args:
+        max_k:
+            允许验证的最大draft token数，通常等于启动参数
+            speculative_config.num_speculative_tokens。
+
+        initial_k:
+            启动时使用的验证长度。
+            如果为None，则从max_k开始。
+            你也可以设置为7，复用已经验证成功的固定K=7路径。
+
+        min_k:
+            允许验证的最小draft token数。
+            不建议设为0，因为0等价于关闭推测解码，需要处理更多状态切换。
+
+        low_rate:
+            接受率低于该阈值时，将active_k减少1。
+
+        high_rate:
+            接受率高于该阈值时，将active_k增加1。
+
+        interval_steps:
+            至少积累多少个包含draft token的Engine Step后，才允许决策一次。
+
+        min_draft_tokens:
+            至少统计多少个有效draft token后，才允许决策。
+            这是为了避免低并发情况下仅凭很少样本调整K。
+    """
+    def __init__(
+        self,
+        max_k: int,
+        initial_k: int | None = None,
+        min_k: int = 1,
+        low_rate: float = 0.25,
+        high_rate: float = 0.45,
+        interval_steps: int = 8,
+        min_draft_tokens: int = 128,
+    ) -> None:
+        assert 0 <= low_rate < high_rate <= 1
+        assert 1 <= min_k <= max_k
+
+        self.max_k = max_k
+        self.min_k = min_k
+        self.low_rate = low_rate
+        self.high_rate = high_rate
+        self.interval_steps = interval_steps
+        self.min_draft_tokens = min_draft_tokens
+
+        # 从最大验证长度开始。
+        self.active_k = max_k
+
+        self._steps = 0
+        self._draft_tokens = 0
+        self._accepted_tokens = 0
+
+    def observe(
+        self,
+        accepted_tokens: int,
+        draft_tokens: int,
+    ) -> tuple[int, int, float, int] | None:
+        if draft_tokens <= 0:
+            return None
+
+        accepted_tokens = min(max(accepted_tokens, 0), draft_tokens)
+
+        self._steps += 1
+        self._draft_tokens += draft_tokens
+        self._accepted_tokens += accepted_tokens
+
+        # 同时满足控制周期和最小样本量才调整。
+        if (
+            self._steps < self.interval_steps
+            or self._draft_tokens < self.min_draft_tokens
+        ):
+            return None
+
+        rate = self._accepted_tokens / self._draft_tokens  # 接受率
+        samples = self._draft_tokens
+        old_k = self.active_k
+
+        if rate < self.low_rate:
+            self.active_k = max(self.min_k, self.active_k - 1)
+        elif rate > self.high_rate:
+            self.active_k = min(self.max_k, self.active_k + 1)
+
+        new_k = self.active_k
+
+        # 每次决策后开启新窗口，避免旧K的数据影响新K。
+        self._steps = 0
+        self._draft_tokens = 0
+        self._accepted_tokens = 0
+
+        return old_k, new_k, rate, samples
+
+
+
 class Scheduler(SchedulerInterface):
     def __init__(
         self,
@@ -214,14 +313,56 @@ class Scheduler(SchedulerInterface):
         speculative_config = vllm_config.speculative_config
         self.use_eagle = False
         self.num_spec_tokens = self.num_lookahead_tokens = 0
+
+
+        ##改 增
+        # max_num_spec_tokens：
+        # 启动阶段配置的最大draft token容量K_max。
+        # 它决定DFlash最大输出宽度、KV lookahead容量以及部分缓冲区容量，
+        # 初始化完成后不能动态修改。
+        self.max_num_spec_tokens = 0
+
+        # active_num_spec_tokens：
+        # Scheduler当前允许Target实际验证的draft token数量K_active。
+        # 只有这个字段会根据接受率动态变化。
+        self.active_num_spec_tokens = 0
+
+        self.spec_token_controller: (
+            AcceptanceRateSpecTokenController | None
+        ) = None
+        ##
+
+
         if speculative_config:
             # self.num_spec_tokens = speculative_config.num_speculative_tokens  #####改 ==15
-            self.num_spec_tokens = 7
-            if speculative_config.use_eagle():
+            self.max_num_spec_tokens = (
+                speculative_config.num_speculative_tokens
+            )
+            self.num_spec_tokens = self.max_num_spec_tokens
+            self.spec_token_controller = (
+                AcceptanceRateSpecTokenController(
+                    max_k=self.max_num_spec_tokens,
+                    # 你已经验证过K=7能够正确运行，因此可以从7开始。
+                    # 如果配置的最大K小于7，则从最大K开始。
+                    initial_k=min(7, self.max_num_spec_tokens),
+                    min_k=1,
+                    low_rate=0.25,
+                    high_rate=0.45,
+                    interval_steps=8,
+                    min_draft_tokens=128,
+                )
+            )
+            self.active_num_spec_tokens = (
+                self.spec_token_controller.active_k
+            )
+            if speculative_config.use_eagle():  # true
                 self.use_eagle = True
+                # num_lookahead_tokens is the number of tokens to look ahead for speculative decoding.
+                self.num_lookahead_tokens = self.max_num_spec_tokens
+            if speculative_config.uses_draft_model():  # false
                 self.num_lookahead_tokens = self.num_spec_tokens
-            if speculative_config.uses_draft_model():
-                self.num_lookahead_tokens = self.num_spec_tokens
+
+
 
         # Create the KV cache manager.
         if hash_block_size is None:
@@ -361,6 +502,7 @@ class Scheduler(SchedulerInterface):
         # num_tokens_with_spec. This is general enough to cover
         # chunked prefills, prefix caching, speculative decoding,
         # and the "jump decoding" optimization in the future.
+        step_active_k = self.active_num_spec_tokens
 
         scheduled_new_reqs: list[Request] = []
         scheduled_resumed_reqs: list[Request] = []
@@ -389,7 +531,15 @@ class Scheduler(SchedulerInterface):
         req_index = 0
         while req_index < len(self.running) and token_budget > 0:
             request = self.running[req_index]
-
+            ##改 增
+            ##截断spec_token_ids
+            if (
+                request.spec_token_ids
+                and len(request.spec_token_ids) > step_active_k
+            ):
+                del request.spec_token_ids[step_active_k:]
+            ##
+            
             if (
                 request.num_output_placeholders > 0  # 16
                 # This is (num_computed_tokens + 1) - (num_output_placeholders - 1).
@@ -409,11 +559,11 @@ class Scheduler(SchedulerInterface):
             # 上一步 Worker 跑完 → update_from_output()把采样到的 token 追加到 _all_token_ids：
             # num_new_tokens表示"本轮需要为新计算/分配 KV Cache Slot 的 token 数量"，
             # 即该请求还有多少个 token 的 KV 尚未被计算过也未分配到物理块 decode阶段一般是1
-            num_new_tokens = (
-                request.num_tokens_with_spec  # 30
-                + request.num_output_placeholders  # 16
-                - request.num_computed_tokens  # 30
-            )
+            # num_new_tokens = (
+            #     request.num_tokens_with_spec  # 30
+            #     + request.num_output_placeholders  # 16
+            #     - request.num_computed_tokens  # 30
+            # )
             num_new_tokens = (
                 # prompt + 5(accepted) + 3(draft) = P+8  原序列 + 小模型预推出来的多个候选 token
                 # 1024(prompt) + 1(output) = 1025 无推测解码
@@ -965,6 +1115,8 @@ class Scheduler(SchedulerInterface):
             num_scheduled_tokens=num_scheduled_tokens,
             total_num_scheduled_tokens=total_num_scheduled_tokens,
             scheduled_spec_decode_tokens=scheduled_spec_decode_tokens,
+            # 传递schedule()开始时冻结的K，而不是函数末尾可能变化的成员变量。
+            active_num_spec_tokens=step_active_k,
             scheduled_encoder_inputs=scheduled_encoder_inputs,
             num_common_prefix_blocks=num_common_prefix_blocks,
             preempted_req_ids={req.request_id for req in preempted_reqs},
@@ -1384,6 +1536,12 @@ class Scheduler(SchedulerInterface):
         # to avoid expensive operations inside the loop.
         stopped_running_reqs: set[Request] = set()
         stopped_preempted_reqs: set[Request] = set()
+
+        # 聚合整个SchedulerOutput的统计量。
+        # 不能处理完一个请求就调整K，否则同一个批次不同请求可能影响控制状态。
+        step_draft_tokens = 0
+        step_accepted_tokens = 0
+        # 遍历本轮所有调度的请求，统计推测解码的 token 接受 / 拒绝 / 无效数量
         for req_id, num_tokens_scheduled in num_scheduled_tokens.items():
             assert num_tokens_scheduled > 0
             if failed_kv_load_req_ids and req_id in failed_kv_load_req_ids:
@@ -1411,6 +1569,38 @@ class Scheduler(SchedulerInterface):
             if scheduled_spec_token_ids and generated_token_ids:
                 num_draft_tokens = len(scheduled_spec_token_ids)
                 num_accepted = len(generated_token_ids) - 1
+
+                # 某些draft token可能由于序列长度、grammar或其他限制而无效。
+                # 这些token没有被真正验证，不应放入接受率分母。
+                num_invalid_tokens = 0
+
+                if scheduler_output.num_invalid_spec_tokens is not None:
+                    num_invalid_tokens = (
+                        scheduler_output.num_invalid_spec_tokens.get(
+                            req_id,
+                            0,
+                        )
+                    )
+
+                effective_draft_tokens = max(
+                    num_draft_tokens - num_invalid_tokens,
+                    0,
+                )
+
+                # generated_token_ids通常包含：
+                #   已接受的draft token + 1个Target bonus token
+                #
+                # bonus token不是draft token，因此上面的num_accepted需要减1。
+                # 这里再次限制上限，保证接受数不会超过有效draft数。
+                effective_accepted_tokens = min(
+                    max(num_accepted, 0),
+                    effective_draft_tokens,
+                )
+
+                step_draft_tokens += effective_draft_tokens
+                step_accepted_tokens += effective_accepted_tokens
+
+
                 num_rejected = num_draft_tokens - num_accepted
                 # num_computed_tokens represents the number of tokens
                 # processed in the current step, considering scheduled
@@ -1431,6 +1621,34 @@ class Scheduler(SchedulerInterface):
                     request_id=req_id,
                 )
 
+            ##改
+            if self.spec_token_controller is not None:
+                decision = self.spec_token_controller.observe(
+                    accepted_tokens=step_accepted_tokens,
+                    draft_tokens=step_draft_tokens,
+                )
+
+                # observe()可能尚未达到统计窗口，也可能已经完成一次决策。
+                # 无论哪种情况，都从控制器同步当前active_k。
+                #
+                # 新值只对下一次schedule()生效，不影响当前已完成的批次。
+                self.active_num_spec_tokens = (
+                    self.spec_token_controller.active_k
+                )
+
+                if decision is not None:
+                    old_k, new_k, acceptance_rate, sample_count = decision
+
+                    logger.info(
+                        "Dynamic speculative tokens: "
+                        "acceptance_rate=%.4f, "
+                        "samples=%d, "
+                        "active_k=%d->%d",
+                        acceptance_rate,
+                        sample_count,
+                        old_k,
+                        new_k,
+                    )
             # Free encoder inputs only after the step has actually executed.
             if request.has_encoder_inputs:
                 self._free_encoder_inputs(request)
@@ -1735,7 +1953,12 @@ class Scheduler(SchedulerInterface):
             if self.structured_output_manager.should_advance(request):
                 metadata = request.structured_output_request
                 spec_token_ids = metadata.grammar.validate_tokens(spec_token_ids)  # type: ignore[union-attr]
-            request.spec_token_ids = spec_token_ids
+            if self.spec_token_controller is not None:
+                spec_token_ids = spec_token_ids[
+                    :self.active_num_spec_tokens
+                ]
+
+            request.spec_token_ids = spec_token_ids            
 
     def update_draft_token_ids_in_output(
         self, draft_token_ids: DraftTokenIds, scheduler_output: SchedulerOutput

@@ -585,8 +585,8 @@ class GPUModelRunner(
         self.valid_sampled_token_count_gpu: torch.Tensor | None = None
         if self.speculative_config:
             ##改
-            # self.num_spec_tokens = self.speculative_config.num_speculative_tokens
-            self.num_spec_tokens = 7
+            self.num_spec_tokens = self.speculative_config.num_speculative_tokens
+            # self.num_spec_tokens = 7
             draft_config = self.speculative_config.draft_model_config
             if draft_config is not None and draft_config.max_model_len is not None:
                 self.effective_drafter_max_model_len = draft_config.max_model_len

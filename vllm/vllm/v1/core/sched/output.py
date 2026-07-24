@@ -177,6 +177,8 @@ class CachedRequestData:
 
 @dataclass
 class SchedulerOutput:
+    ##改 增
+    active_num_spec_tokens: int
     # list of the requests that are scheduled for the first time.
     # We cache the request's data in each worker process, so that we don't
     # need to re-send it every scheduling step.
@@ -250,6 +252,9 @@ class SchedulerOutput:
             num_common_prefix_blocks=[],
             finished_req_ids=set(),
             free_encoder_mm_hashes=[],
+
+            # 空批次不进行真实推测验证，因此使用0。
+            active_num_spec_tokens=0,
         )
 
 

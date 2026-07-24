@@ -893,8 +893,8 @@ class AscendSpecDecodeBaseProposer(SpecDecodeBaseProposer):
                 self._update_full_graph_params_if_needed(forward_context, num_input_tokens, multi_steps_attn_metadata)
         
         ###改
-        # return draft_token_ids draft_token_ids长度为15
-        return draft_token_ids[:, :7]
+        return draft_token_ids # draft_token_ids长度为15
+        # return draft_token_ids[:, :7]
 
     def compute_draft_token_ids(self, hidden_states: torch.Tensor):
         logits = self.model.logits_processor(self.model.lm_head, hidden_states)
