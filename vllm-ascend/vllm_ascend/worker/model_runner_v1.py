@@ -1823,7 +1823,7 @@ class NPUModelRunner(GPUModelRunner):
             self.runtime_decode_query_len = 1 + active_k
 
             # Ascend注意力元数据构造应使用当前批次的实际query length。
-            self.decode_token_per_req = (
+            self.decode_token_per_req = (  # 实际有作用
                 self.runtime_decode_query_len
             )
 

@@ -67,37 +67,30 @@ logger = init_logger(__name__)
 ##改 增
 class AcceptanceRateSpecTokenController:
     """初始化动态控制器。
-
     Args:
         max_k:
             允许验证的最大draft token数，通常等于启动参数
             speculative_config.num_speculative_tokens。
-
         initial_k:
             启动时使用的验证长度。
             如果为None，则从max_k开始。
             你也可以设置为7，复用已经验证成功的固定K=7路径。
-
         min_k:
             允许验证的最小draft token数。
             不建议设为0，因为0等价于关闭推测解码，需要处理更多状态切换。
-
         low_rate:
             接受率低于该阈值时，将active_k减少1。
-
         high_rate:
             接受率高于该阈值时，将active_k增加1。
-
         interval_steps:
             至少积累多少个包含draft token的Engine Step后，才允许决策一次。
-
         min_draft_tokens:
             至少统计多少个有效draft token后，才允许决策。
             这是为了避免低并发情况下仅凭很少样本调整K。
     """
     def __init__(
         self,
-        max_k: int,
+        max_k: int = 15,
         initial_k: int | None = None,
         min_k: int = 1,
         low_rate: float = 0.25,
@@ -105,8 +98,42 @@ class AcceptanceRateSpecTokenController:
         interval_steps: int = 8,
         min_draft_tokens: int = 128,
     ) -> None:
-        assert 0 <= low_rate < high_rate <= 1
-        assert 1 <= min_k <= max_k
+        # assert 0 <= low_rate < high_rate <= 1
+        # assert 1 <= min_k <= max_k
+
+        # self.max_k = max_k
+        # self.min_k = min_k
+        # self.low_rate = low_rate
+        # self.high_rate = high_rate
+        # self.interval_steps = interval_steps
+        # self.min_draft_tokens = min_draft_tokens
+
+        # # 从最大验证长度开始。
+        # self.active_k = max_k
+
+        # self._steps = 0
+        # self._draft_tokens = 0
+        # self._accepted_tokens = 0
+        if not 0.0 <= low_rate < high_rate <= 1.0:
+            raise ValueError(
+                "Expected 0 <= low_rate < high_rate <= 1, "
+                f"but got low_rate={low_rate}, high_rate={high_rate}"
+            )
+
+        if not 1 <= min_k <= max_k:
+            raise ValueError(
+                f"Expected 1 <= min_k <= max_k, "
+                f"but got min_k={min_k}, max_k={max_k}"
+            )
+
+        if initial_k is None:
+            initial_k = max_k
+
+        if not min_k <= initial_k <= max_k:
+            raise ValueError(
+                f"Expected min_k <= initial_k <= max_k, "
+                f"but got initial_k={initial_k}"
+            )
 
         self.max_k = max_k
         self.min_k = min_k
@@ -115,51 +142,92 @@ class AcceptanceRateSpecTokenController:
         self.interval_steps = interval_steps
         self.min_draft_tokens = min_draft_tokens
 
-        # 从最大验证长度开始。
-        self.active_k = max_k
+        # 当前真正交给Target验证的draft token数量。
+        # 这是运行期间唯一允许动态变化的K。
+        self.active_k = initial_k
 
-        self._steps = 0
-        self._draft_tokens = 0
-        self._accepted_tokens = 0
+        # 以下三个字段组成当前统计窗口。
+        self._num_steps = 0
+        self._num_draft_tokens = 0
+        self._num_accepted_tokens = 0
 
     def observe(
         self,
         accepted_tokens: int,
         draft_tokens: int,
     ) -> tuple[int, int, float, int] | None:
+        """记录一个调度批次的接受情况，并在条件满足时更新active_k。
+
+        Args:
+            accepted_tokens:
+                本批次中被Target接受的draft token总数。
+
+            draft_tokens:
+                本批次中实际送给Target验证的有效draft token总数。
+
+        Returns:
+            尚未达到决策条件时返回None。
+
+            完成一次决策时返回：
+
+                old_k, new_k, acceptance_rate, sample_count
+        """
         if draft_tokens <= 0:
+            # 本批次没有使用推测解码，不纳入接受率统计。
             return None
 
-        accepted_tokens = min(max(accepted_tokens, 0), draft_tokens)
+        # 防御性限制，确保异常统计不会产生小于0或大于1的接受率。
+        accepted_tokens = min(
+            max(accepted_tokens, 0),
+            draft_tokens,
+        )
 
-        self._steps += 1
-        self._draft_tokens += draft_tokens
-        self._accepted_tokens += accepted_tokens
+        self._num_steps += 1
+        self._num_draft_tokens += draft_tokens
+        self._num_accepted_tokens += accepted_tokens
 
-        # 同时满足控制周期和最小样本量才调整。
+        # 必须同时满足：
+        # 1. 已积累足够多的调度步；
+        # 2. 已积累足够多的draft token样本。
+        #
+        # 只满足一个条件都不调整，避免在低并发或短时间波动下误判。
         if (
-            self._steps < self.interval_steps
-            or self._draft_tokens < self.min_draft_tokens
+            self._num_steps < self.interval_steps
+            or self._num_draft_tokens < self.min_draft_tokens
         ):
             return None
 
-        rate = self._accepted_tokens / self._draft_tokens  # 接受率
-        samples = self._draft_tokens
+        acceptance_rate = (
+            self._num_accepted_tokens / self._num_draft_tokens
+        )
+        sample_count = self._num_draft_tokens
         old_k = self.active_k
 
-        if rate < self.low_rate:
-            self.active_k = max(self.min_k, self.active_k - 1)
-        elif rate > self.high_rate:
-            self.active_k = min(self.max_k, self.active_k + 1)
+        if acceptance_rate < self.low_rate:
+            # 接受率低：继续验证较远位置的draft token收益较低，
+            # 因此每次只减少1，防止K突然剧烈变化。
+            self.active_k = max(
+                self.min_k,
+                self.active_k - 1,
+            )
 
-        new_k = self.active_k
+        elif acceptance_rate > self.high_rate:
+            # 接受率高：说明草稿模型预测质量较好，可以尝试多验证1个token。
+            self.active_k = min(
+                self.max_k,
+                self.active_k + 1,
+            )
 
-        # 每次决策后开启新窗口，避免旧K的数据影响新K。
-        self._steps = 0
-        self._draft_tokens = 0
-        self._accepted_tokens = 0
+        # 如果接受率位于迟滞区间内，则active_k保持不变。
+        new_k = 15
 
-        return old_k, new_k, rate, samples
+        # K改变后，新旧K的接受率分布不同。
+        # 因此每次决策后必须清空窗口，不能让旧K的数据长期影响新K。
+        self._num_steps = 0
+        self._num_draft_tokens = 0
+        self._num_accepted_tokens = 0
+
+        return old_k, new_k, acceptance_rate, sample_count
 
 
 
@@ -342,12 +410,11 @@ class Scheduler(SchedulerInterface):
             self.spec_token_controller = (
                 AcceptanceRateSpecTokenController(
                     max_k=self.max_num_spec_tokens,
-                    # 你已经验证过K=7能够正确运行，因此可以从7开始。
                     # 如果配置的最大K小于7，则从最大K开始。
-                    initial_k=min(7, self.max_num_spec_tokens),
+                    initial_k=self.max_num_spec_tokens,
                     min_k=1,
-                    low_rate=0.25,
-                    high_rate=0.45,
+                    low_rate=0,
+                    high_rate=0.01,
                     interval_steps=8,
                     min_draft_tokens=128,
                 )
@@ -1537,6 +1604,7 @@ class Scheduler(SchedulerInterface):
         stopped_running_reqs: set[Request] = set()
         stopped_preempted_reqs: set[Request] = set()
 
+        ##改
         # 聚合整个SchedulerOutput的统计量。
         # 不能处理完一个请求就调整K，否则同一个批次不同请求可能影响控制状态。
         step_draft_tokens = 0
@@ -1620,35 +1688,7 @@ class Scheduler(SchedulerInterface):
                     num_invalid_spec_tokens=scheduler_output.num_invalid_spec_tokens,
                     request_id=req_id,
                 )
-
-            ##改
-            if self.spec_token_controller is not None:
-                decision = self.spec_token_controller.observe(
-                    accepted_tokens=step_accepted_tokens,
-                    draft_tokens=step_draft_tokens,
-                )
-
-                # observe()可能尚未达到统计窗口，也可能已经完成一次决策。
-                # 无论哪种情况，都从控制器同步当前active_k。
-                #
-                # 新值只对下一次schedule()生效，不影响当前已完成的批次。
-                self.active_num_spec_tokens = (
-                    self.spec_token_controller.active_k
-                )
-
-                if decision is not None:
-                    old_k, new_k, acceptance_rate, sample_count = decision
-
-                    logger.info(
-                        "Dynamic speculative tokens: "
-                        "acceptance_rate=%.4f, "
-                        "samples=%d, "
-                        "active_k=%d->%d",
-                        acceptance_rate,
-                        sample_count,
-                        old_k,
-                        new_k,
-                    )
+                
             # Free encoder inputs only after the step has actually executed.
             if request.has_encoder_inputs:
                 self._free_encoder_inputs(request)
@@ -1744,6 +1784,36 @@ class Scheduler(SchedulerInterface):
             else:
                 # Invariant: EngineCore returns no partial prefill outputs.
                 assert not prompt_logprobs_tensors
+
+        
+        ##改
+        if self.spec_token_controller is not None:
+            decision = self.spec_token_controller.observe(
+                accepted_tokens=step_accepted_tokens,
+                draft_tokens=step_draft_tokens,
+            )
+
+            # observe()可能尚未达到统计窗口，也可能已经完成一次决策。
+            # 无论哪种情况，都从控制器同步当前active_k。
+            #
+            # 新值只对下一次schedule()生效，不影响当前已完成的批次。
+            self.active_num_spec_tokens = (
+                self.spec_token_controller.active_k
+            )
+
+            if decision is not None:
+                old_k, new_k, acceptance_rate, sample_count = decision
+
+                logger.info(
+                    "Dynamic speculative tokens: "
+                    "acceptance_rate=%.4f, "
+                    "samples=%d, "
+                    "active_k=%d->%d",
+                    acceptance_rate,
+                    sample_count,
+                    old_k,
+                    new_k,
+                )
 
         # Remove the stopped requests from the running and waiting queues.
         if stopped_running_reqs:

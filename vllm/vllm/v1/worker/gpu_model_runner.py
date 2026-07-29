@@ -778,7 +778,7 @@ class GPUModelRunner(
         self.uniform_decode_query_len = 1 + self.num_spec_tokens
 
         # Cudagraph dispatcher for runtime cudagraph dispatching.
-        self.cudagraph_dispatcher = CudagraphDispatcher(self.vllm_config)
+        self.cudagraph_dispatcher = CudagraphDispatcher(self.vllm_config)  ##
 
         self.mm_budget = (
             MultiModalBudget(self.vllm_config, self.mm_registry)
