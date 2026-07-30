@@ -92,11 +92,12 @@ class AcceptanceRateSpecTokenController:
         self,
         max_k: int = 15,
         initial_k: int | None = None,
-        min_k: int = 1,
+        min_k: int = 3,
         low_rate: float = 0.25,
         high_rate: float = 0.45,
         interval_steps: int = 8,
         min_draft_tokens: int = 128,
+        enable_control: bool = True,
     ) -> None:
         # assert 0 <= low_rate < high_rate <= 1
         # assert 1 <= min_k <= max_k
@@ -141,6 +142,7 @@ class AcceptanceRateSpecTokenController:
         self.high_rate = high_rate
         self.interval_steps = interval_steps
         self.min_draft_tokens = min_draft_tokens
+        self.enable_control = enable_control
 
         # 当前真正交给Target验证的draft token数量。
         # 这是运行期间唯一允许动态变化的K。
@@ -172,8 +174,8 @@ class AcceptanceRateSpecTokenController:
 
                 old_k, new_k, acceptance_rate, sample_count
         """
-        if draft_tokens <= 0:
-            # 本批次没有使用推测解码，不纳入接受率统计。
+        if draft_tokens <= 0 or not self.enable_control:
+            # 本批次没有使用推测解码或关闭动态调整，不纳入接受率统计。
             return None
 
         # 防御性限制，确保异常统计不会产生小于0或大于1的接受率。
@@ -208,18 +210,18 @@ class AcceptanceRateSpecTokenController:
             # 因此每次只减少1，防止K突然剧烈变化。
             self.active_k = max(
                 self.min_k,
-                self.active_k - 1,
+                self.active_k - 2,
             )
 
         elif acceptance_rate > self.high_rate:
             # 接受率高：说明草稿模型预测质量较好，可以尝试多验证1个token。
             self.active_k = min(
                 self.max_k,
-                self.active_k + 1,
+                self.active_k + 2,
             )
 
         # 如果接受率位于迟滞区间内，则active_k保持不变。
-        new_k = 15
+        new_k = self.active_k
 
         # K改变后，新旧K的接受率分布不同。
         # 因此每次决策后必须清空窗口，不能让旧K的数据长期影响新K。
@@ -413,8 +415,6 @@ class Scheduler(SchedulerInterface):
                     # 如果配置的最大K小于7，则从最大K开始。
                     initial_k=self.max_num_spec_tokens,
                     min_k=1,
-                    low_rate=0,
-                    high_rate=0.01,
                     interval_steps=8,
                     min_draft_tokens=128,
                 )

@@ -1,0 +1,15 @@
+[2026-07-29 03:36:02,846] [ais_bench] [[32mINFO[0m] Task [vllm-api-general-chat/math_prm800k_500]
+[2026-07-29 03:36:03,026] [ais_bench] [[32mINFO[0m] Zero Retriever initialized, returning empty shot case for all queries
+[2026-07-29 03:36:03,161] [ais_bench] [[32mINFO[0m] Apply ice template finished
+[2026-07-29 03:36:03,167] [ais_bench] [[32mINFO[0m] Start warmup, run with concurrency: 64
+Warmup:   0%|          | 0/1 [00:00<?, ?case/s]Warmup: 100%|██████████| 1/1 [00:02<00:00,  2.35s/case]Warmup: 100%|██████████| 1/1 [00:02<00:00,  2.35s/case]
+[2026-07-29 03:36:05,528] [ais_bench] [[32mINFO[0m] Dataset needed memory size: 0.46729374 MB
+[2026-07-29 03:36:05,528] [ais_bench] [[32mINFO[0m] Memory usage check passed: 3.00% < 80% (Available: 971.77 GB)
+[2026-07-29 03:36:05,532] [ais_bench] [[33mWARNING[0m] The request rate is below 0.1, resulting in an excessively long interval between two consecutive requests.
+[2026-07-29 03:36:05,532] [ais_bench] [[32mINFO[0m] Traffic request rate: 0 RPS with burstiness 1.0.
+[2026-07-29 03:36:05,533] [ais_bench] [[32mINFO[0m] Request rate (0.0) or ramp end rps (None) < 0.001, sending all requests simultaneously
+[2026-07-29 03:36:05,533] [ais_bench] [[32mINFO[0m] Total concurrency: 64, per worker concurrency: [64]
+[2026-07-29 03:36:05,533] [ais_bench] [[32mINFO[0m] Total data num: 500, per worker data num: [500]
+[2026-07-29 03:36:05,653] [ais_bench] [[32mINFO[0m] All subprocesses have finished deserializing the first batch of data
+[2026-07-29 03:37:27,766] [ais_bench] [[32mINFO[0m] Api infer task time elapsed: 84.92s
+[2026-07-29 03:37:27,926] [ais_bench] [[32mINFO[0m] Task state is finish, exit loop

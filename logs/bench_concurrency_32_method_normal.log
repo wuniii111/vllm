@@ -1,0 +1,48 @@
+INFO 07-29 10:44:26 [__init__.py:44] Available plugins for group vllm.platform_plugins:
+INFO 07-29 10:44:26 [__init__.py:46] - ascend -> vllm_ascend:register
+INFO 07-29 10:44:26 [__init__.py:49] All plugins in this group will be loaded. Set `VLLM_PLUGINS` to control which plugins to load.
+INFO 07-29 10:44:26 [__init__.py:238] Platform plugin ascend is activated
+2026-07-29 10:45:53,448 - 1498213 - ServiceProfiler - INFO - VLLM_USE_V1 not set, auto-detected via vLLM 0.20.2+empty: default 1
+INFO 07-29 10:45:53 [nixl_utils.py:20] Setting UCX_RCACHE_MAX_UNRELEASED to '1024' to avoid a rare memory leak in UCX when using NIXL.
+WARNING 07-29 10:45:53 [nixl_utils.py:34] NIXL is not available
+WARNING 07-29 10:45:53 [nixl_utils.py:44] NIXL agent config is not available
+WARNING 07-29 10:45:54 [registry.py:945] Model architecture DeepseekV4ForCausalLM is already registered, and will be overwritten by the new model class vllm_ascend.models.deepseek_v4:AscendDeepseekV4ForCausalLM.
+WARNING 07-29 10:45:54 [registry.py:945] Model architecture DeepSeekV4MTPModel is already registered, and will be overwritten by the new model class vllm_ascend.models.deepseek_v4_mtp:DeepSeekV4MTP.
+INFO 07-29 10:45:54 [__init__.py:110] Registered model loader `<class 'vllm_ascend.model_loader.netloader.netloader.ModelNetLoaderElastic'>` with load format `netloader`
+INFO 07-29 10:45:54 [__init__.py:110] Registered model loader `<class 'vllm_ascend.model_loader.rfork.rfork_loader.RForkModelLoader'>` with load format `rfork`
+Namespace(subparser='bench', bench_type='serve', dispatch_function=<function BenchmarkServingSubcommand.cmd at 0xfffeb9484400>, trust_remote_code=True, seed=0, num_prompts=400, dataset_name='custom', no_stream=False, dataset_path='/workspace/gsm8k_jsonl/test_vllm.jsonl', no_oversample=False, skip_chat_template=False, enable_multimodal_chat=False, disable_shuffle=False, custom_output_len=256, spec_bench_output_len=256, spec_bench_category=None, sonnet_input_len=550, sonnet_output_len=150, sonnet_prefix_len=200, sharegpt_output_len=None, blazedit_min_distance=0.0, blazedit_max_distance=1.0, asr_max_audio_len_sec=inf, asr_min_audio_len_sec=0.0, random_input_len=1024, random_output_len=128, random_range_ratio='0.0', random_prefix_len=0, random_batch_size=1, no_reranker=False, random_mm_base_items_per_request=1, random_mm_num_mm_items_range_ratio=0.0, random_mm_limit_mm_per_prompt={'image': 255, 'video': 1}, random_mm_bucket_config={(256, 256, 1): 0.5, (720, 1280, 1): 0.5, (720, 1280, 16): 0.0}, hf_subset=None, hf_split=None, hf_name=None, hf_output_len=None, prefix_repetition_prefix_len=256, prefix_repetition_suffix_len=256, prefix_repetition_num_prefixes=10, prefix_repetition_output_len=128, speed_bench_dataset_subset='qualitative', speed_bench_output_len=4096, speed_bench_category=None, label=None, backend='vllm', base_url=None, host='127.0.0.1', port=8000, endpoint='/v1/completions', header=None, max_concurrency=32, model='/home/trainee/models/Qwen3-8B', input_len=None, output_len=None, tokenizer=None, tokenizer_mode='auto', use_beam_search=False, logprobs=None, request_rate=inf, burstiness=1.0, disable_tqdm=False, num_warmups=0, profile=False, save_result=False, save_detailed=False, append_result=False, metadata=None, result_dir=None, result_filename=None, ignore_eos=False, percentile_metrics=None, metric_percentiles='99', goodput=None, request_id_prefix='bench-6d44c9fc-', top_p=None, top_k=None, min_p=None, temperature=None, frequency_penalty=None, presence_penalty=None, repetition_penalty=None, served_model_name=None, lora_modules=None, lora_assignment='random', ramp_up_strategy=None, ramp_up_start_rps=None, ramp_up_end_rps=None, ready_check_timeout_sec=0, extra_body=None, skip_tokenizer_init=False, insecure=False, plot_timeline=False, timeline_itl_thresholds='25,50', plot_dataset_stats=False)
+WARNING: vllm bench serve no longer sets temperature==0 (greedy) in requests by default. The default will be determined on the server side and can be model/API specific. For the old behavior, include --temperature=0.
+Starting initial single prompt test run...
+Skipping endpoint ready check.
+Starting main benchmark run...
+Traffic request rate: inf
+Burstiness factor: 1.0 (Poisson process)
+Maximum request concurrency: 32
+  0%|          | 0/400 [00:00<?, ?it/s]  0%|          | 1/400 [00:10<1:11:32, 10.76s/it]  8%|▊         | 33/400 [00:20<03:13,  1.90it/s]   9%|▉         | 37/400 [00:20<02:44,  2.21it/s] 16%|█▋        | 65/400 [00:30<02:09,  2.59it/s] 17%|█▋        | 69/400 [00:30<01:54,  2.89it/s] 24%|██▍       | 97/400 [00:39<01:41,  2.97it/s] 25%|██▍       | 99/400 [00:39<01:36,  3.10it/s] 26%|██▌       | 102/400 [00:39<01:28,  3.36it/s] 32%|███▏      | 129/400 [00:49<01:29,  3.04it/s] 33%|███▎      | 131/400 [00:49<01:24,  3.18it/s] 34%|███▍      | 135/400 [00:49<01:13,  3.63it/s] 40%|████      | 161/400 [00:59<01:21,  2.93it/s] 40%|████      | 162/400 [00:59<01:19,  2.98it/s] 42%|████▏     | 166/400 [01:00<01:08,  3.43it/s] 46%|████▋     | 186/400 [01:00<00:31,  6.82it/s] 48%|████▊     | 193/400 [01:09<01:22,  2.51it/s] 49%|████▉     | 197/400 [01:09<01:10,  2.89it/s] 50%|█████     | 201/400 [01:10<00:58,  3.39it/s] 56%|█████▋    | 225/400 [01:19<01:02,  2.81it/s] 57%|█████▊    | 230/400 [01:19<00:52,  3.24it/s] 60%|█████▉    | 238/400 [01:20<00:37,  4.28it/s] 64%|██████▍   | 257/400 [01:29<00:50,  2.86it/s] 66%|██████▌   | 262/400 [01:29<00:41,  3.29it/s] 67%|██████▋   | 268/400 [01:29<00:32,  4.06it/s] 72%|███████▏  | 289/400 [01:39<00:38,  2.86it/s] 74%|███████▎  | 294/400 [01:39<00:32,  3.29it/s] 75%|███████▌  | 300/400 [01:39<00:24,  4.04it/s] 80%|████████  | 321/400 [01:48<00:27,  2.83it/s] 82%|████████▏ | 326/400 [01:49<00:22,  3.25it/s] 86%|████████▌ | 343/400 [01:49<00:10,  5.48it/s] 88%|████████▊ | 353/400 [01:58<00:17,  2.74it/s] 90%|████████▉ | 358/400 [01:58<00:13,  3.19it/s] 91%|█████████ | 363/400 [01:58<00:09,  3.82it/s] 96%|█████████▋| 385/400 [02:07<00:05,  2.93it/s] 97%|█████████▋| 388/400 [02:07<00:03,  3.18it/s] 98%|█████████▊| 391/400 [02:07<00:02,  3.51it/s]100%|██████████| 400/400 [02:07<00:00,  3.13it/s]
+tip: install termplotlib and gnuplot to plot the metrics
+============ Serving Benchmark Result ============
+Successful requests:                     400       
+Failed requests:                         0         
+Maximum request concurrency:             32        
+Benchmark duration (s):                  127.88    
+Total input tokens:                      27335     
+Total generated tokens:                  102400    
+Request throughput (req/s):              3.13      
+Output token throughput (tok/s):         800.75    
+Peak output token throughput (tok/s):    1088.00   
+Peak concurrent requests:                64.00     
+Total token throughput (tok/s):          1014.50   
+---------------Time to First Token----------------
+Mean TTFT (ms):                          229.91    
+Median TTFT (ms):                        232.48    
+P99 TTFT (ms):                           326.44    
+-----Time per Output Token (excl. 1st token)------
+Mean TPOT (ms):                          37.73     
+Median TPOT (ms):                        37.54     
+P99 TPOT (ms):                           41.02     
+---------------Inter-token Latency----------------
+Mean ITL (ms):                           37.78     
+Median ITL (ms):                         31.48     
+P99 ITL (ms):                            98.36     
+==================================================
+sys:1: DeprecationWarning: builtin type swigvarlink has no __module__ attribute

@@ -1,0 +1,70 @@
+INFO 07-29 13:12:10 [__init__.py:44] Available plugins for group vllm.platform_plugins:
+INFO 07-29 13:12:10 [__init__.py:46] - ascend -> vllm_ascend:register
+INFO 07-29 13:12:10 [__init__.py:49] All plugins in this group will be loaded. Set `VLLM_PLUGINS` to control which plugins to load.
+INFO 07-29 13:12:10 [__init__.py:238] Platform plugin ascend is activated
+2026-07-29 13:14:06,738 - 1625566 - ServiceProfiler - INFO - VLLM_USE_V1 not set, auto-detected via vLLM 0.20.2+empty: default 1
+INFO 07-29 13:14:08 [nixl_utils.py:20] Setting UCX_RCACHE_MAX_UNRELEASED to '1024' to avoid a rare memory leak in UCX when using NIXL.
+WARNING 07-29 13:14:08 [nixl_utils.py:34] NIXL is not available
+WARNING 07-29 13:14:08 [nixl_utils.py:44] NIXL agent config is not available
+WARNING 07-29 13:14:08 [registry.py:945] Model architecture DeepseekV4ForCausalLM is already registered, and will be overwritten by the new model class vllm_ascend.models.deepseek_v4:AscendDeepseekV4ForCausalLM.
+WARNING 07-29 13:14:08 [registry.py:945] Model architecture DeepSeekV4MTPModel is already registered, and will be overwritten by the new model class vllm_ascend.models.deepseek_v4_mtp:DeepSeekV4MTP.
+INFO 07-29 13:14:08 [__init__.py:110] Registered model loader `<class 'vllm_ascend.model_loader.netloader.netloader.ModelNetLoaderElastic'>` with load format `netloader`
+INFO 07-29 13:14:08 [__init__.py:110] Registered model loader `<class 'vllm_ascend.model_loader.rfork.rfork_loader.RForkModelLoader'>` with load format `rfork`
+Namespace(subparser='bench', bench_type='serve', dispatch_function=<function BenchmarkServingSubcommand.cmd at 0xfffec3a804a0>, trust_remote_code=True, seed=0, num_prompts=400, dataset_name='custom', no_stream=False, dataset_path='/workspace/gsm8k_jsonl/test_vllm.jsonl', no_oversample=False, skip_chat_template=False, enable_multimodal_chat=False, disable_shuffle=False, custom_output_len=256, spec_bench_output_len=256, spec_bench_category=None, sonnet_input_len=550, sonnet_output_len=150, sonnet_prefix_len=200, sharegpt_output_len=None, blazedit_min_distance=0.0, blazedit_max_distance=1.0, asr_max_audio_len_sec=inf, asr_min_audio_len_sec=0.0, random_input_len=1024, random_output_len=128, random_range_ratio='0.0', random_prefix_len=0, random_batch_size=1, no_reranker=False, random_mm_base_items_per_request=1, random_mm_num_mm_items_range_ratio=0.0, random_mm_limit_mm_per_prompt={'image': 255, 'video': 1}, random_mm_bucket_config={(256, 256, 1): 0.5, (720, 1280, 1): 0.5, (720, 1280, 16): 0.0}, hf_subset=None, hf_split=None, hf_name=None, hf_output_len=None, prefix_repetition_prefix_len=256, prefix_repetition_suffix_len=256, prefix_repetition_num_prefixes=10, prefix_repetition_output_len=128, speed_bench_dataset_subset='qualitative', speed_bench_output_len=4096, speed_bench_category=None, label=None, backend='vllm', base_url=None, host='127.0.0.1', port=8090, endpoint='/v1/completions', header=None, max_concurrency=128, model='/home/trainee/models/Qwen3-8B', input_len=None, output_len=None, tokenizer=None, tokenizer_mode='auto', use_beam_search=False, logprobs=None, request_rate=inf, burstiness=1.0, disable_tqdm=False, num_warmups=0, profile=False, save_result=False, save_detailed=False, append_result=False, metadata=None, result_dir=None, result_filename=None, ignore_eos=False, percentile_metrics=None, metric_percentiles='99', goodput=None, request_id_prefix='bench-aa68e0cc-', top_p=None, top_k=None, min_p=None, temperature=None, frequency_penalty=None, presence_penalty=None, repetition_penalty=None, served_model_name=None, lora_modules=None, lora_assignment='random', ramp_up_strategy=None, ramp_up_start_rps=None, ramp_up_end_rps=None, ready_check_timeout_sec=0, extra_body=None, skip_tokenizer_init=False, insecure=False, plot_timeline=False, timeline_itl_thresholds='25,50', plot_dataset_stats=False)
+WARNING: vllm bench serve no longer sets temperature==0 (greedy) in requests by default. The default will be determined on the server side and can be model/API specific. For the old behavior, include --temperature=0.
+Starting initial single prompt test run...
+Skipping endpoint ready check.
+Starting main benchmark run...
+Traffic request rate: inf
+Burstiness factor: 1.0 (Poisson process)
+Maximum request concurrency: 128
+  0%|          | 0/400 [00:00<?, ?it/s]  0%|          | 1/400 [00:18<2:00:32, 18.13s/it]  1%|          | 3/400 [00:18<31:32,  4.77s/it]    1%|▏         | 5/400 [00:18<16:15,  2.47s/it]  2%|▏         | 7/400 [00:19<09:36,  1.47s/it]  2%|▎         | 10/400 [00:19<05:12,  1.25it/s]  4%|▎         | 14/400 [00:19<02:51,  2.25it/s]  4%|▍         | 16/400 [00:19<02:15,  2.83it/s]  5%|▌         | 20/400 [00:19<01:25,  4.42it/s]  8%|▊         | 31/400 [00:20<00:35, 10.49it/s] 10%|▉         | 39/400 [00:20<00:24, 14.57it/s] 12%|█▏        | 48/400 [00:20<00:17, 20.04it/s] 13%|█▎        | 53/400 [00:20<00:16, 21.42it/s] 16%|█▌        | 64/400 [00:20<00:11, 28.13it/s] 17%|█▋        | 69/400 [00:21<00:11, 28.08it/s] 20%|█▉        | 78/400 [00:21<00:10, 31.28it/s] 22%|██▎       | 90/400 [00:21<00:07, 40.17it/s] 24%|██▍       | 96/400 [00:21<00:08, 37.48it/s] 25%|██▌       | 101/400 [00:21<00:08, 34.35it/s] 26%|██▋       | 106/400 [00:22<00:09, 32.56it/s] 28%|██▊       | 110/400 [00:22<00:09, 29.08it/s] 28%|██▊       | 114/400 [00:22<00:14, 20.03it/s] 30%|██▉       | 118/400 [00:22<00:13, 20.27it/s] 30%|███       | 121/400 [00:23<00:15, 18.50it/s] 31%|███       | 124/400 [00:23<00:15, 17.69it/s] 32%|███▏      | 126/400 [00:23<00:22, 12.38it/s] 32%|███▏      | 128/400 [00:24<00:40,  6.80it/s] 32%|███▎      | 130/400 [00:37<07:08,  1.59s/it] 33%|███▎      | 131/400 [00:37<06:15,  1.40s/it] 33%|███▎      | 132/400 [00:38<05:38,  1.26s/it] 34%|███▎      | 134/400 [00:38<03:57,  1.12it/s] 34%|███▍      | 135/400 [00:38<03:21,  1.31it/s] 34%|███▍      | 136/400 [00:38<02:49,  1.56it/s] 34%|███▍      | 137/400 [00:39<02:21,  1.86it/s] 35%|███▌      | 140/400 [00:39<01:19,  3.28it/s] 35%|███▌      | 141/400 [00:39<01:11,  3.60it/s] 37%|███▋      | 147/400 [00:39<00:31,  7.92it/s] 38%|███▊      | 150/400 [00:39<00:27,  9.15it/s] 38%|███▊      | 152/400 [00:40<00:26,  9.46it/s] 40%|███▉      | 159/400 [00:40<00:15, 15.81it/s] 42%|████▏     | 167/400 [00:40<00:10, 22.35it/s] 43%|████▎     | 171/400 [00:40<00:10, 21.50it/s] 44%|████▍     | 176/400 [00:40<00:09, 22.97it/s] 46%|████▌     | 182/400 [00:40<00:08, 25.64it/s] 47%|████▋     | 187/400 [00:41<00:08, 24.75it/s] 48%|████▊     | 194/400 [00:41<00:07, 28.69it/s] 51%|█████     | 204/400 [00:41<00:05, 35.55it/s] 52%|█████▏    | 208/400 [00:41<00:06, 29.91it/s] 54%|█████▎    | 214/400 [00:41<00:05, 31.23it/s] 55%|█████▌    | 221/400 [00:42<00:05, 31.71it/s] 56%|█████▋    | 226/400 [00:42<00:05, 30.58it/s] 57%|█████▊    | 230/400 [00:42<00:06, 26.66it/s] 58%|█████▊    | 233/400 [00:42<00:09, 18.41it/s] 59%|█████▉    | 236/400 [00:43<00:09, 18.13it/s] 60%|██████    | 240/400 [00:43<00:08, 18.74it/s] 61%|██████    | 243/400 [00:43<00:08, 18.14it/s] 61%|██████▏   | 245/400 [00:43<00:09, 15.94it/s] 62%|██████▏   | 247/400 [00:43<00:10, 14.39it/s] 62%|██████▏   | 249/400 [00:44<00:11, 13.69it/s] 63%|██████▎   | 251/400 [00:44<00:15,  9.71it/s] 63%|██████▎   | 253/400 [00:44<00:14,  9.82it/s] 64%|██████▍   | 255/400 [00:45<00:34,  4.24it/s] 64%|██████▍   | 256/400 [00:47<01:06,  2.18it/s] 64%|██████▍   | 257/400 [00:56<04:55,  2.07s/it] 64%|██████▍   | 258/400 [00:56<03:57,  1.67s/it] 65%|██████▍   | 259/400 [00:56<03:07,  1.33s/it] 65%|██████▌   | 260/400 [00:57<02:25,  1.04s/it] 66%|██████▌   | 262/400 [00:57<01:39,  1.39it/s] 66%|██████▌   | 263/400 [00:57<01:21,  1.68it/s] 66%|██████▋   | 265/400 [00:57<00:53,  2.53it/s] 67%|██████▋   | 268/400 [00:58<00:36,  3.63it/s] 68%|██████▊   | 273/400 [00:58<00:19,  6.53it/s] 69%|██████▉   | 275/400 [00:58<00:17,  7.08it/s] 70%|██████▉   | 278/400 [00:58<00:13,  8.90it/s] 70%|███████   | 281/400 [00:59<00:11, 10.36it/s] 71%|███████   | 283/400 [00:59<00:10, 10.81it/s] 72%|███████▏  | 289/400 [00:59<00:06, 16.32it/s] 73%|███████▎  | 292/400 [00:59<00:06, 16.12it/s] 76%|███████▌  | 302/400 [00:59<00:03, 27.34it/s] 76%|███████▋  | 306/400 [00:59<00:03, 23.87it/s] 78%|███████▊  | 310/400 [01:00<00:03, 22.57it/s] 78%|███████▊  | 314/400 [01:00<00:03, 23.95it/s] 80%|████████  | 322/400 [01:00<00:02, 31.28it/s] 82%|████████▏ | 326/400 [01:00<00:02, 29.29it/s] 82%|████████▎ | 330/400 [01:00<00:02, 28.87it/s] 86%|████████▌ | 342/400 [01:00<00:01, 41.99it/s] 87%|████████▋ | 349/400 [01:01<00:01, 40.62it/s] 89%|████████▉ | 355/400 [01:01<00:01, 38.51it/s] 91%|█████████▏| 365/400 [01:01<00:00, 39.96it/s] 92%|█████████▎| 370/400 [01:01<00:00, 40.32it/s] 94%|█████████▍| 375/400 [01:01<00:00, 29.76it/s] 95%|█████████▌| 381/400 [01:02<00:00, 31.42it/s] 96%|█████████▋| 385/400 [01:05<00:02,  5.16it/s] 97%|█████████▋| 388/400 [01:05<00:02,  5.92it/s] 98%|█████████▊| 391/400 [01:05<00:01,  6.84it/s] 99%|█████████▉| 396/400 [01:05<00:00,  9.43it/s]100%|█████████▉| 399/400 [01:06<00:00,  9.02it/s]100%|██████████| 400/400 [01:06<00:00,  6.03it/s]
+tip: install termplotlib and gnuplot to plot the metrics
+============ Serving Benchmark Result ============
+Successful requests:                     400       
+Failed requests:                         0         
+Maximum request concurrency:             128       
+Benchmark duration (s):                  66.36     
+Total input tokens:                      27335     
+Total generated tokens:                  102400    
+Request throughput (req/s):              6.03      
+Output token throughput (tok/s):         1543.14   
+Peak output token throughput (tok/s):    768.00    
+Peak concurrent requests:                166.00    
+Total token throughput (tok/s):          1955.07   
+---------------Time to First Token----------------
+Mean TTFT (ms):                          805.81    
+Median TTFT (ms):                        587.98    
+P99 TTFT (ms):                           1385.26   
+-----Time per Output Token (excl. 1st token)------
+Mean TPOT (ms):                          73.57     
+Median TPOT (ms):                        74.68     
+P99 TPOT (ms):                           88.87     
+---------------Inter-token Latency----------------
+Mean ITL (ms):                           188.03    
+Median ITL (ms):                         188.26    
+P99 ITL (ms):                            279.44    
+---------------Speculative Decoding---------------
+Acceptance rate (%):                     52.24     
+Acceptance length:                       2.57      
+Drafts:                                  39911     
+Draft tokens:                            119733    
+Accepted tokens:                         62543     
+Per-position acceptance (%):
+  Position 0:                            73.72     
+  Position 1:                            49.39     
+  Position 2:                            33.59     
+  Position 3:                            0.00      
+  Position 4:                            0.00      
+  Position 5:                            0.00      
+  Position 6:                            0.00      
+  Position 7:                            0.00      
+  Position 8:                            0.00      
+  Position 9:                            0.00      
+  Position 10:                           0.00      
+  Position 11:                           0.00      
+  Position 12:                           0.00      
+  Position 13:                           0.00      
+  Position 14:                           0.00      
+==================================================
+sys:1: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
